@@ -12,7 +12,7 @@
 ucontext_t* octx;
 ucontext_t* nctx;
 ucontext_t* cctx;
-ucontext_t* _ctx;
+ucontext_t _ctx;
 
 void foo();
 void bar();
@@ -22,15 +22,13 @@ struct itimerval* gettimer();
 
 void  foo(){ 
         nctx = octx;
-        getcontext(cctx);
         while (1) {
                 puts("Foo");	
         }
 }
 
 void bar(){
-        nctx = octx;
-        getcontext(cctx);
+        nctx = cctx;
         while (1) {
                 puts("Bar");
         }
@@ -38,23 +36,18 @@ void bar(){
 
 void switchContext(int signum){
         puts("Context switch!");
-        //sleep(1);
-        octx = cctx;
-        //nctx = octx;
-        //octx = cctx_foo;
-        swapcontext(cctx, nctx);
+        swapcontext(&_ctx, nctx);
         printf("reached end of switch context\n");
-        sleep(2);
 }
 
 struct itimerval* gettimer(){
         
         struct itimerval timer;
-        timer.it_interval.tv_usec = 1110;
-        timer.it_interval.tv_sec = 0;
+        timer.it_interval.tv_usec = 0;
+        timer.it_interval.tv_sec = 1;
         
-        timer.it_value.tv_usec = 1110;
-        timer.it_value.tv_sec = 0;
+        timer.it_value.tv_usec = 0;
+        timer.it_value.tv_sec = 1;
 
         struct itimerval* ptr = &timer;
         return ptr;
