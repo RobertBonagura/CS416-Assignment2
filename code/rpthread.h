@@ -49,19 +49,18 @@ typedef struct rpthread_mutex_t {
 
 /* define your data structures here: */
 
+typedef struct rpthread_node {
+        struct rpthread_node* next;
+        struct rpthread_t* thread;
+} rpthread_node;
+
 typedef struct rpthread_queue {
-        node* front;
-        node* rear;
+        struct rpthread_node* front;
+        struct rpthread_node* rear;
         int size;
-        int capacity;
         
 } rpthread_queue;
 
-typdef struct rpthread_node {
-        node* next;
-        node* prev;
-        rpthread_t thread;
-} rpthread_node;
 
 
 // YOUR CODE HERE
@@ -96,9 +95,8 @@ int rpthread_mutex_unlock(rpthread_mutex_t *mutex);
 int rpthread_mutex_destroy(rpthread_mutex_t *mutex);
 
 /* queue APIs */
-int add(rpthread_node node, rpthread_queue queue);
-int remove(rpthread_node node, rpthread_queue queue);
-int grow(rpthread_queue queue);
+int add(rpthread_t* thread, rpthread_queue* queue);
+rpthread_t* dequeue(rpthread_queue* queue);
 
 #ifdef USE_RTHREAD
 #define pthread_t rpthread_t
