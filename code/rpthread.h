@@ -1,4 +1,4 @@
-// File:	rpthread_t.h
+// File:	rpthred_t.h
 
 // List all group member's name:
 // username of iLab:
@@ -18,15 +18,22 @@
 #include <sys/types.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <signal.h>
+#include <ucontext.h>
+
+
+#define STACK_SIZE SIGSTKSZ
+
+typedef enum thread_status {RUNNING, READY, WAITING} thread_status;
 
 typedef uint rpthread_t;
 
 typedef struct threadControlBlock {
 	/* add important states in a thread control block */
-	// thread Id
-	// thread status
-	// thread context
-	// thread stack
+	rpthread_t* id;         // thread Id
+	thread_status status;   // thread status
+	ucontext_t* ucp;       // thread context
+	void* stack;            // thread stack
 	// thread priority
 	// And more ...
 
@@ -41,7 +48,21 @@ typedef struct rpthread_mutex_t {
 } rpthread_mutex_t;
 
 /* define your data structures here: */
-// Feel free to add your own auxiliary data structures (linked list or queue etc...)
+
+typedef struct rpthread_queue {
+        node* front;
+        node* rear;
+        int size;
+        int capacity;
+        
+} rpthread_queue;
+
+typdef struct rpthread_node {
+        node* next;
+        node* prev;
+        rpthread_t thread;
+} rpthread_node;
+
 
 // YOUR CODE HERE
 
@@ -73,6 +94,11 @@ int rpthread_mutex_unlock(rpthread_mutex_t *mutex);
 
 /* destroy the mutex */
 int rpthread_mutex_destroy(rpthread_mutex_t *mutex);
+
+/* queue APIs */
+int add(rpthread_node node, rpthread_queue queue);
+int remove(rpthread_node node, rpthread_queue queue);
+int grow(rpthread_queue queue);
 
 #ifdef USE_RTHREAD
 #define pthread_t rpthread_t

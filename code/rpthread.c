@@ -13,19 +13,53 @@
 /* create a new thread */
 int rpthread_create(rpthread_t * thread, pthread_attr_t * attr, 
                       void *(*function)(void*), void * arg) {
-       // Create Thread Control Block
-       // Create and initialize the context of this thread
-       // Allocate space of stack for this thread to run
-       // after everything is all set, push this thread int
-       // YOUR CODE HERE
-	
-    return 0;
+        // Create Thread Control Block
+        tcb* tcblock = malloc(sizeof(tcb));
+        if (tcblock == NULL){
+                perror("Failed to allocate tcblock");
+                exit(1);
+        }
+
+        // Create and initialize the context of this thread
+        ucontext_t* ucp = malloc(sizeof(ucontext_t));
+        if (ucp == NULL){
+                perror("Failed to allocate context")'
+                exit(1);
+        }
+        if (getcontext(ucp) < 0){
+                perror("getcontext");
+                exit(1);
+        }
+
+        // Allocate space of stack for this thread to run
+        void *stack = malloc(STACK_SIZE);
+        if (stack == NULL){
+                perror("Failed to allocate stack");
+                exit(1);
+        }
+
+        // Setup context
+        ucp->uc_link = NULL;
+        ucp->uc_stack.ss_sp = stack;
+        ucp->uc_stack.ss_size = STACK_SIZE;
+        ucp->uc_stack.ss_flags = 0;
+        makecontext(ucp, void *(function)(void*), 1, arg);
+        
+        // after everything is all set, push this thread int
+        makeid(thread);
+        tcblock->id = thread;
+        tcblock->status = READY;
+        tcblock->ucp = ucp;
+        tcblock->stack = stack;
+        queue.push(thread);	
+
+        return 0;
 };
 
 /* give CPU possession to other user-level threads voluntarily */
 int rpthread_yield() {
 	
-	// Change thread state from Running to Ready
+        // Change thread state from Running to Ready
 	// Save context of this thread to its thread control block
 	// switch from thread context to scheduler context
 
