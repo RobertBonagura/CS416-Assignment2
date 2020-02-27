@@ -1,5 +1,5 @@
 // File:	rpthread.c
-git@github.com:RobertBonagura/CS416-Assignment2.git
+
 // List all group member's name:
 // username of iLab:
 // iLab Server:
@@ -9,7 +9,6 @@ git@github.com:RobertBonagura/CS416-Assignment2.git
 // INITAILIZE ALL YOUR VARIABLES HERE
 // YOUR CODE HERE
 
-rpthread_queue q;
 
 /* create a new thread */
 int rpthread_create(rpthread_t * thread, pthread_attr_t * attr, 
@@ -52,7 +51,7 @@ int rpthread_create(rpthread_t * thread, pthread_attr_t * attr,
         tcblock->status = READY;
         tcblock->ucp = ucp;
         tcblock->stack = stack;
-        queue.add(thread);	
+        queue.push(thread);	
 
         return 0;
 };
@@ -165,38 +164,7 @@ static void sched_mlfq() {
 	// YOUR CODE HERE
 }
 
-/* Add function for rpthread_queue */
-static int add(rpthread_t* thread, rpthread_queue* queue){
-        
-        rpthread_node* newtail = malloc(sizeof(node));
-        if (node == NULL){
-                perror("Could not malloc node");
-                exit(1);
-        }
-        
-        rpthread_node* prevtail = queue->rear;
-        prevtail->next = newTail;
-        newTail->thread = thread;
+// Feel free to add any other functions you need
 
-        queue->rear = newTail;
-        queue->size++;
-        
-        return 1;
-}
-
-/* Dequeue function for rpthread_queue */
-static rpthread_t* dequeue(rpthread_queue queue){
-        
-        if (size == 0){
-                return -1;
-        }
-        rpthread_node* node = queue->head;
-        rpthread_t* thread = node->thread;
-        
-        queue->head = node->next;
-        queue->size--;
-        free(node);
-        return thread;
-}
-
+// YOUR CODE HERE
 
