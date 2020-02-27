@@ -48,10 +48,10 @@ typedef struct rpthread_mutex_t {
 
 /* define your data structures here: */
 
-/* Linked list for queue.*/
+/* Underlying linked list inside queue */
 typedef struct rpthread_node {
         struct rpthread_node* next;
-        rpthread_t* thread;
+        tcb* thread;
 } rpthread_node;
 
 /* Linked list for thread IDs */
@@ -60,7 +60,7 @@ typedef struct rpthread_id {
         struct rpthread_id* next;
 } rpthread_id;
 
-/* Queue of threads*/
+/* Queue of nodes holding tcb's */
 typedef struct rpthread_queue {
         rpthread_node* front;
         rpthread_node* rear;
@@ -102,8 +102,8 @@ int rpthread_mutex_destroy(rpthread_mutex_t *mutex);
 
 /* queue APIs */
 static void init_q(rpthread_q* q);
-static int add(rpthread_t* thread, rpthread_q* q);
-static rpthread_t* dque(rpthread_q* q);
+static int add(tcb* thread, rpthread_q* q);
+static tcb* dque(rpthread_q* q);
 
 /* set ID to rpthread_t*/
 int setid(rpthread_t* thread);

@@ -11,6 +11,8 @@
 rpthread_q* queue;
 int id;
 
+tcb* ctcb;
+
 /* create a new thread */
 int rpthread_create(rpthread_t * thread, pthread_attr_t * attr, 
                       void *(*function)(void*), void * arg) {
@@ -45,8 +47,8 @@ int rpthread_create(rpthread_t * thread, pthread_attr_t * attr,
         tcblock->status = READY;
         tcblock->ucp = ucp;
         tcblock->stack = stack;
-        add(thread, queue);	
-
+        add(tcp, queue);	
+        
         return 0;
 };
 
@@ -54,9 +56,15 @@ int rpthread_create(rpthread_t * thread, pthread_attr_t * attr,
 int rpthread_yield() {
 	
         // Change thread state from Running to Ready
-	// Save context of this thread to its thread control block
+	tcb->state = READY;
+        // Save context of this thread to its thread control block
+        ucontext_t* ucp = malloc(sizeof(ucontext_t));
+        if (getcontext(ucp) < 0){
+                perror("Failed during getcontext");
+                exit(1);
+        }
+        tcb->ucp;
 	// switch from thread context to scheduler context
-
 	// YOUR CODE HERE
 	return 0;
 };
@@ -177,19 +185,19 @@ int setid(rpthread_t* thread){
 static void init_q(rpthread_q* q){
         q = malloc(sizeof(rpthread_q));
         rpthread_node* front = malloc(sizeof(rpthread_node));
-        rpthread_t* thread = malloc(sizeof(rpthread_t));
+        tcb* thread = malloc(sizeof(tcb));
         if (q == NULL || front == NULL || thread == NULL){
                 perror("Could not allocate queue");
                 exit(1);
         }
         memset(q, 0, sizeof(rpthread_q));
         memset(front, 0, sizeof(rpthread_node));
-        memset(thread, 0, sizeof(rpthread_t));
+        memset(thread, 0, sizeof(tcb));
         rpthread_node* back = front;
         return;
 }
 
-static int add(rpthread_t* thread, rpthread_q* q){
+static int add(tcp* thread, rpthread_q* q){
         if (q == NULL){
                 init_q(q);
         }
@@ -208,15 +216,15 @@ static int add(rpthread_t* thread, rpthread_q* q){
 }
 
 /* Dequeue function for rpthread_queue */
-static rpthread_t* dque(rpthread_q* q){
+static tcb* dque(rpthread_q* q){
         
         if (q == NULL || q->size == 0){
                 int err = -1;
-                rpthread_t* thread_err = &err;
-                return thread_err;
+                tcb* dque_err = &err;
+                return dque_err;
         }
         rpthread_node* front = queue->front;
-        rpthread_t* thread = front->thread;
+        tcb* thread = front->thread;
         
         queue->front = front->next;
         queue->size--;
