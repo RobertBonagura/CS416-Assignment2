@@ -19,7 +19,7 @@
 #include <stdlib.h>
 #include <signal.h>
 #include <ucontext.h>
-
+#include <string.h>
 
 #define STACK_SIZE SIGSTKSZ
 

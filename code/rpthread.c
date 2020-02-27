@@ -9,43 +9,38 @@
 // INITAILIZE ALL YOUR VARIABLES HERE
 // YOUR CODE HERE
 rpthread_q* queue;
+int id;
 
 /* create a new thread */
 int rpthread_create(rpthread_t * thread, pthread_attr_t * attr, 
                       void *(*function)(void*), void * arg) {
         // Create Thread Control Block
-        tcb* tcblock = malloc(sizeof(tcb));
-        if (tcblock == NULL){
-                perror("Failed to allocate tcblock");
-                exit(1);
-        }
-
-        // Create and initialize the context of this thread
-        ucontext_t* ucp = malloc(sizeof(ucontext_t));
-        if (ucp == NULL){
-                perror("Failed to allocate context");
-                exit(1);
-        }
-        if (getcontext(ucp) < 0){
-                perror("getcontext");
-                exit(1);
-        }
-
+        // Create and initalize the context of this thread
         // Allocate space of stack for this thread to run
-        void *stack = malloc(STACK_SIZE);
-        if (stack == NULL){
-                perror("Failed to allocate stack");
+        tcb* tcblock = malloc(sizeof(tcb));
+        ucontext_t* ucp = malloc(sizeof(ucontext_t));
+        void* stack = malloc(sizeof(STACK_SIZE));
+        if (tcblock == NULL || ucp == NULL || stack == NULL){
+                perror("Failed allocation during pthread_create");
                 exit(1);
         }
+        memset(tcblock, 0, sizeof(tcb));
+        memset(ucp, 0, sizeof(ucontext_t));
+        memset(stack, 0, sizeof(STACK_SIZE));
 
+        if (getcontext(ucp) < 0){
+                perror("Failed during getcontext");
+                exit(1);
+        }
         // Setup context
         ucp->uc_link = NULL;
         ucp->uc_stack.ss_sp = stack;
         ucp->uc_stack.ss_size = STACK_SIZE;
         ucp->uc_stack.ss_flags = 0;
         makecontext(ucp, (void (*)(void)) function, 1, arg);
-        // after everything is all set, push this thread int
-        makeid(thread);
+        
+        // after everything is all set, push this thread into q
+        setid(thread);
         tcblock->id = thread;
         tcblock->status = READY;
         tcblock->ucp = ucp;
@@ -165,6 +160,20 @@ static void sched_mlfq() {
 
 // Feel free to add any other functions you need
 
+
+/* sets ID to rpthread_t type*/
+int setid(rpthread_t* thread){
+        thread = malloc(sizeof(rpthread_t));
+        if (thread == NULL){
+                perror("Could not allocate pthread in setid");
+                exit(1);
+        }
+        memset(thread, 0, sizeof(rpthread_t));
+        *(thread) = (rpthread_t)id;
+        id++;
+}
+
+/* queue APIs*/
 static void init_q(rpthread_q* q){
         q = malloc(sizeof(rpthread_q));
         rpthread_node* front = malloc(sizeof(rpthread_node));
