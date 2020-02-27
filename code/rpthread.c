@@ -58,15 +58,31 @@ int rpthread_yield() {
         // Change thread state from Running to Ready
 	tcb->state = READY;
         // Save context of this thread to its thread control block
-        ucontext_t* ucp = malloc(sizeof(ucontext_t));
-        if (getcontext(ucp) < 0){
+        ucontext_t* cctx = malloc(sizeof(ucontext_t));
+        if (getcontext(cctx) < 0){
                 perror("Failed during getcontext");
                 exit(1);
         }
-        tcb->ucp;
+        tcb->cctx;
 	// switch from thread context to scheduler context
-	// YOUR CODE HERE
-	return 0;
+        ucontext_t* nctx = malloc(sizeof(ucontext_t));
+        if (nctx == NULL){
+                perror("Failed allocation during pthread_create");
+                exit(1);
+        }
+        memset(nctx, 0, sizeof(ucontext_t));
+        if (getcontext(nctx) < 0){
+                perror("Failed during getcontext");
+                exit(1);
+        }
+        // Setup context
+        nctx->uc_link = NULL;
+        nctx->uc_stack.ss_sp = stack;
+        nctx->uc_stack.ss_size = STACK_SIZE;
+        nctx->uc_stack.ss_flags = 0;
+        makecontext(nctx, (void *)&schedule, 1, arg);
+	swapcontext(cctx, nctx);
+        return 0;
 };
 
 /* terminate a thread */
