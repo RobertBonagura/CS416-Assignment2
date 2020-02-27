@@ -8,7 +8,7 @@
 
 // INITAILIZE ALL YOUR VARIABLES HERE
 // YOUR CODE HERE
-
+rpthread_q* queue;
 
 /* create a new thread */
 int rpthread_create(rpthread_t * thread, pthread_attr_t * attr, 
@@ -23,7 +23,7 @@ int rpthread_create(rpthread_t * thread, pthread_attr_t * attr,
         // Create and initialize the context of this thread
         ucontext_t* ucp = malloc(sizeof(ucontext_t));
         if (ucp == NULL){
-                perror("Failed to allocate context")'
+                perror("Failed to allocate context");
                 exit(1);
         }
         if (getcontext(ucp) < 0){
@@ -43,15 +43,14 @@ int rpthread_create(rpthread_t * thread, pthread_attr_t * attr,
         ucp->uc_stack.ss_sp = stack;
         ucp->uc_stack.ss_size = STACK_SIZE;
         ucp->uc_stack.ss_flags = 0;
-        makecontext(ucp, void *(function)(void*), 1, arg);
-        
+        makecontext(ucp, (void (*)(void)) function, 1, arg);
         // after everything is all set, push this thread int
         makeid(thread);
         tcblock->id = thread;
         tcblock->status = READY;
         tcblock->ucp = ucp;
         tcblock->stack = stack;
-        queue.push(thread);	
+        add(thread, queue);	
 
         return 0;
 };
@@ -166,5 +165,52 @@ static void sched_mlfq() {
 
 // Feel free to add any other functions you need
 
-// YOUR CODE HERE
+static void init_q(rpthread_q* q){
+        q = malloc(sizeof(rpthread_q));
+        rpthread_node* front = malloc(sizeof(rpthread_node));
+        rpthread_t* thread = malloc(sizeof(rpthread_t));
+        if (q == NULL || front == NULL || thread == NULL){
+                perror("Could not allocate queue");
+                exit(1);
+        }
+        memset(q, 0, sizeof(rpthread_q));
+        memset(front, 0, sizeof(rpthread_node));
+        memset(thread, 0, sizeof(rpthread_t));
+        rpthread_node* back = front;
+        return;
+}
 
+static int add(rpthread_t* thread, rpthread_q* q){
+        if (q == NULL){
+                init_q(q);
+        }
+        rpthread_node* newtail = malloc(sizeof(rpthread_node));
+        if (newtail == NULL){
+                perror("Could not allocate add API");
+                exit(1);
+        }
+        memset(newtail, 0, sizeof(rpthread_node));
+        q->rear->next = newtail;
+        newtail->thread = thread;
+        q->rear = newtail;
+        q->size++;
+        return 1;
+        
+}
+
+/* Dequeue function for rpthread_queue */
+static rpthread_t* dque(rpthread_q* q){
+        
+        if (q == NULL || q->size == 0){
+                int err = -1;
+                rpthread_t* thread_err = &err;
+                return thread_err;
+        }
+        rpthread_node* front = queue->front;
+        rpthread_t* thread = front->thread;
+        
+        queue->front = front->next;
+        queue->size--;
+        free(front);
+        return thread;
+}
