@@ -1,5 +1,4 @@
 // File:	rpthred_t.h
-
 // List all group member's name:
 // username of iLab:
 // iLab Server:
@@ -49,16 +48,23 @@ typedef struct rpthread_mutex_t {
 
 /* define your data structures here: */
 
+/* Linked list for queue.*/
 typedef struct rpthread_node {
         struct rpthread_node* next;
         struct rpthread_t* thread;
 } rpthread_node;
 
+/* Linked list for thread IDs */
+typedef struct rpthread_id {
+        struct rpthread_t* thread;
+        struct rpthread_id* next;
+} rpthread_id;
+
+/* Queue of threads*/
 typedef struct rpthread_queue {
         struct rpthread_node* front;
         struct rpthread_node* rear;
         int size;
-        
 } rpthread_queue;
 
 
@@ -95,8 +101,12 @@ int rpthread_mutex_unlock(rpthread_mutex_t *mutex);
 int rpthread_mutex_destroy(rpthread_mutex_t *mutex);
 
 /* queue APIs */
-int add(rpthread_t* thread, rpthread_queue* queue);
-rpthread_t* dequeue(rpthread_queue* queue);
+static int add(rpthread_t* thread, rpthread_queue* queue);
+static rpthread_t* dequeue(rpthread_queue* queue);
+
+/* set ID to rpthread_t*/
+int setid(rpthread_t* thread);
+
 
 #ifdef USE_RTHREAD
 #define pthread_t rpthread_t
