@@ -47,7 +47,7 @@ int rpthread_create(rpthread_t * thread, pthread_attr_t * attr,
         tcblock->status = READY;
         tcblock->ucp = ucp;
         tcblock->stack = stack;
-        add(tcp, queue);	
+        add(tcblock, queue);	
         
         return 0;
 };
