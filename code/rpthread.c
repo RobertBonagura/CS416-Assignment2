@@ -11,7 +11,6 @@
 rpthread_q* queue;
 tcb* ctcb;
 ucontext_t* cctx;
-ucontext_t* mctx;
 int id_counter;
 struct itimerval timer;
 
@@ -19,6 +18,31 @@ struct itimerval timer;
 int rpthread_create(rpthread_t * thread, pthread_attr_t * attr, 
                       void *(*function)(void*), void * arg) {
         stoptimer();
+        // First, check if main thread has tcb initialized
+        if (ctcb == NULL){
+                ctcb = malloc(sizeof(tcb));
+                cctx = malloc(sizeof(ucontext_t));
+                void* cstack = malloc(sizeof(STACK_SIZE));
+                if (cctb == NULL || cctx == NULL || cstack == NULL){
+                        perror("Failed allocation during pthread_create");
+                        exit(1);
+                }
+                memset(ctcb, 0, sizeof(tcb));
+                memset(cctx, 0, sizeof(ucontext_t));
+                memset(cstack, 0, sizeof(STACK_SIZE));
+
+                if (getcontext(cctx) < 0){
+                        perror("Failed during getcontext");
+                        exit(1);
+                }
+                rphthread_t* cid;
+                setid(cid);
+                ctcb->id = cid;
+                cctb->status = RUNNING;
+                cctb->ucp->cctx;
+                cctb->stack = cstack;
+                add(cctb->queue);
+        }
         // Create Thread Control Block
         // Create and initalize the context of this thread
         // Allocate space of stack for this thread to run
@@ -51,26 +75,14 @@ int rpthread_create(rpthread_t * thread, pthread_attr_t * attr,
         tcblock->ucp = ucp;
         tcblock->stack = stack;
         add(tcblock, queue);
+        
         // swap to scheduler context 
         ucontext_t* schedctx = make_schedctx();
-        if (mctx == NULL){
-                mctx = malloc(sizeof(ucontext_t));
-                memset(mctx, 0, sizeof(ucontext));
-                if (getcontext(mctx) == NULL){
-                        perror("Failed during getcontext");
-                        exit(1);
-                }
-        }
-        if (cctx == NULL){
-                cctx = mctx;
-        } else {
-                cctx = malloc(sizeof(ucontext_t));
-                memset(cctx, 0, sizeof(ucontext));
-                if (getcontext(cctx) == NULL){
-                        perror("Failed during getcontext");
-                        exit(1);
-                }
-                
+        cctx = malloc(sizeof(ucontext_t));
+        memset(cctx, 0, sizeof(ucontext));
+        if (getcontext(cctx) == NULL){
+                perror("Failed during getcontext");
+                exit(1); 
         }
         swapcontext(cctx, schedctx);
         return 0;
@@ -94,7 +106,7 @@ int rpthread_yield() {
         }
         tcb->cctx;
         // Setup scheduler context
-	ucontext_t* schedctx = make_schedctx();
+        ucontext_t* schedctx = make_schedctx();
         swapcontext(cctx, schedctx);
         starttimer();
         return 0;
@@ -159,6 +171,11 @@ int rpthread_mutex_destroy(rpthread_mutex_t *mutex) {
 
 /* scheduler */
 static void schedule() {
+        /* First update context of ctcb so that it contains context
+           of thread just before swap was called.                   */
+        tcb->state = READY;
+        tcb->ucp = cctx;
+        starttimer();
 	// Every time when timer interrup happens, your thread library 
 	// should be contexted switched from thread context to this 
 	// schedule function
@@ -168,8 +185,6 @@ static void schedule() {
 
 	// if (sched == STCF)
 	//		sched_stcf();
-	// else if (sched == MLFQ)
-	// 		sched_mlfq();
 
 	// YOUR CODE HERE
         sched_stcf();
@@ -188,7 +203,6 @@ static void sched_stcf() {
 	// (feel free to modify arguments and return types)
 
 	// YOUR CODE HERE
-        starttimer(); 
 }
 
 /* Preemptive MLFQ scheduling algorithm */
@@ -290,19 +304,31 @@ static tcb* dque(rpthread_q* q){
 
 /* Start global timer */
 void starttimer(){
+        struct sigaction sa;
+        memset(&sa, 0, sizeof(sa));
+        sa.sa_handler = &schedule;
+        sigaction(SIGPROF, &sa, NULL);
+
         timer.it_interval.tv_usec = 1;
         timer.it_interval.tv_sec = 0;
         timer.it_value.tv_usec = 1;
         timer.it_value.tv_usec = 0;
+        setitimer(ITIMER_PROF, &timer, NULL);
         return;
 }
 
 /* Stop global timer */
-void starttimer(){
+void stoptimer(){
+        struct sigaction sa;
+        memset(&sa, 0, sizeof(sa));
+        sa.sa_handler = &schedule;
+        sigaction(SIGPROF, &sa, NULL);
+        
         timer.it_interval.tv_usec = 0;
         timer.it_interval.tv_sec = 0;
         timer.it_value.tv_usec = 0;
         timer.it_value.tv_usec = 0;
+        setitimer(ITIMER_PROF, &timer, NULL);
         return;
 }
 
