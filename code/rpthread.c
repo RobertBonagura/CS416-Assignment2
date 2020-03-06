@@ -10,6 +10,8 @@
 // YOUR CODE HERE
 rpthread_q* queue;
 tcb* ctcb;
+ucontext_t* cctx;
+ucontext_t* mctx;
 int id_counter;
 struct itimerval timer;
 
@@ -48,18 +50,44 @@ int rpthread_create(rpthread_t * thread, pthread_attr_t * attr,
         tcblock->status = READY;
         tcblock->ucp = ucp;
         tcblock->stack = stack;
-        add(tcblock, queue);        
-        schedule();
+        add(tcblock, queue);
+        // swap to scheduler context 
+        ucontext_t* schedctx = make_schedctx();
+        if (mctx == NULL){
+                mctx = malloc(sizeof(ucontext_t));
+                memset(mctx, 0, sizeof(ucontext));
+                if (getcontext(mctx) == NULL){
+                        perror("Failed during getcontext");
+                        exit(1);
+                }
+        }
+        if (cctx == NULL){
+                cctx = mctx;
+        } else {
+                cctx = malloc(sizeof(ucontext_t));
+                memset(cctx, 0, sizeof(ucontext));
+                if (getcontext(cctx) == NULL){
+                        perror("Failed during getcontext");
+                        exit(1);
+                }
+                
+        }
+        swapcontext(cctx, schedctx);
         return 0;
 };
 
 /* give CPU possession to other user-level threads voluntarily */
 int rpthread_yield() {
         stoptimer();
+        if (cctx == NULL) {
+                printf("Can't call rphtread_yield() on a single thread\n");
+                printf("Call rpthread_create() first\n");
+                return(-1);
+
+        }
         // Change thread state from Running to Ready
 	tcb->state = READY;
-        // Save context of this thread to its thread control block
-        ucontext_t* cctx = malloc(sizeof(ucontext_t));
+        // Save context of this thread to its thread control block        
         if (getcontext(cctx) < 0){
                 perror("Failed during getcontext");
                 exit(1);
@@ -77,6 +105,7 @@ void rpthread_exit(void *value_ptr) {
 	// Deallocated any dynamic memory created when starting this thread
 
 	// YOUR CODE HERE
+        
 };
 
 
