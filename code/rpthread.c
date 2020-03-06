@@ -9,10 +9,8 @@
 // INITAILIZE ALL YOUR VARIABLES HERE
 // YOUR CODE HERE
 rpthread_q* queue;
-int id;
-
 tcb* ctcb;
-
+int id_counter;
 /* create a new thread */
 int rpthread_create(rpthread_t * thread, pthread_attr_t * attr, 
                       void *(*function)(void*), void * arg) {
@@ -187,14 +185,13 @@ static void sched_mlfq() {
 
 /* sets ID to rpthread_t type*/
 int setid(rpthread_t* thread){
-        thread = malloc(sizeof(rpthread_t));
-        if (thread == NULL){
-                perror("Could not allocate pthread in setid");
-                exit(1);
-        }
         memset(thread, 0, sizeof(rpthread_t));
-        *(thread) = (rpthread_t)id;
-        id++;
+        if (id_counter == NULL){
+                id_counter = 0;
+        }
+        id_counter++;
+        *thread = id_counter;
+        return *thread;
 }
 
 /* queue APIs*/
