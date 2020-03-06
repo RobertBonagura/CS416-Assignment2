@@ -16,7 +16,6 @@ struct itimerval timer;
 /* create a new thread */
 int rpthread_create(rpthread_t * thread, pthread_attr_t * attr, 
                       void *(*function)(void*), void * arg) {
-        
         stoptimer();
         // Create Thread Control Block
         // Create and initalize the context of this thread
@@ -36,7 +35,7 @@ int rpthread_create(rpthread_t * thread, pthread_attr_t * attr,
                 perror("Failed during getcontext");
                 exit(1);
         }
-        // Setup context
+        // Setup context of newly created thread
         ucp->uc_link = NULL;
         ucp->uc_stack.ss_sp = stack;
         ucp->uc_stack.ss_size = STACK_SIZE;
@@ -56,7 +55,7 @@ int rpthread_create(rpthread_t * thread, pthread_attr_t * attr,
 
 /* give CPU possession to other user-level threads voluntarily */
 int rpthread_yield() {
-	
+        stoptimer();
         // Change thread state from Running to Ready
 	tcb->state = READY;
         // Save context of this thread to its thread control block
@@ -66,24 +65,10 @@ int rpthread_yield() {
                 exit(1);
         }
         tcb->cctx;
-	// switch from thread context to scheduler context
-        ucontext_t* nctx = malloc(sizeof(ucontext_t));
-        if (nctx == NULL){
-                perror("Failed allocation during pthread_create");
-                exit(1);
-        }
-        memset(nctx, 0, sizeof(ucontext_t));
-        if (getcontext(nctx) < 0){
-                perror("Failed during getcontext");
-                exit(1);
-        }
-        // Setup context
-        nctx->uc_link = NULL;
-        nctx->uc_stack.ss_sp = stack;
-        nctx->uc_stack.ss_size = STACK_SIZE;
-        nctx->uc_stack.ss_flags = 0;
-        makecontext(nctx, (void *)&schedule, 1, arg);
-	swapcontext(cctx, nctx);
+        // Setup scheduler context
+	ucontext_t* schedctx = make_schedctx();
+        swapcontext(cctx, schedctx);
+        starttimer();
         return 0;
 };
 
@@ -187,6 +172,28 @@ static void sched_mlfq() {
 
 // Feel free to add any other functions you need
 
+/* Make context for scheduler function */
+ucontext_t* make_schedctx(){
+        ucontext_t* schedctx = malloc(sizeof(ucontext_t));
+        void* stack = malloc(sizeof(STACK_SIZE));
+        if (schedctx == NULL || stack == NULL ){
+                perror("Failed allocation during makeschedctx");
+                exit(1);
+        }
+        memset(schedctx, 0, sizeof(ucontext_t));
+        memset(stack, 0, sizeof(STACK_SIZE));
+        if (getcontext(schedctx) < 0){
+                perror("Failed during getcontext(schedctx)");
+                exit(1);
+        }
+        // Setup scheduler context
+        schedctx->uc_link = NULL;
+        schedctx->uc_stack.ss_sp = stack;
+        schedctx->uc_stack.ss_size = STACK_SIZE;
+        schedctx->uc_stack.ss_flags = 0;
+        makecontext(schedctx, (void *)&schedule, 1, arg);
+        return schedctx;
+}
 
 /* sets ID to rpthread_t type*/
 int setid(rpthread_t* thread){
@@ -198,6 +205,8 @@ int setid(rpthread_t* thread){
         *thread = id_counter;
         return *thread;
 }
+
+
 
 /* queue APIs*/
 static void init_q(rpthread_q* q){

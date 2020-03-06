@@ -101,6 +101,9 @@ int rpthread_mutex_unlock(rpthread_mutex_t *mutex);
 /* destroy the mutex */
 int rpthread_mutex_destroy(rpthread_mutex_t *mutex);
 
+/* make context for scheduler function */
+ucontext_t* make_schedctx();
+
 /* set ID to rpthread_t*/
 int setid(rpthread_t* thread);
 
