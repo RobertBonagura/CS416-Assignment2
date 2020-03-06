@@ -11,9 +11,13 @@
 rpthread_q* queue;
 tcb* ctcb;
 int id_counter;
+struct itimerval timer;
+
 /* create a new thread */
 int rpthread_create(rpthread_t * thread, pthread_attr_t * attr, 
                       void *(*function)(void*), void * arg) {
+        
+        stoptimer();
         // Create Thread Control Block
         // Create and initalize the context of this thread
         // Allocate space of stack for this thread to run
@@ -45,8 +49,8 @@ int rpthread_create(rpthread_t * thread, pthread_attr_t * attr,
         tcblock->status = READY;
         tcblock->ucp = ucp;
         tcblock->stack = stack;
-        add(tcblock, queue);	
-        
+        add(tcblock, queue);        
+        schedule();
         return 0;
 };
 
@@ -154,7 +158,7 @@ static void schedule() {
 	// 		sched_mlfq();
 
 	// YOUR CODE HERE
-
+        sched_stcf();
 // schedule policy
 #ifndef MLFQ
 	// Choose STCF
@@ -170,6 +174,7 @@ static void sched_stcf() {
 	// (feel free to modify arguments and return types)
 
 	// YOUR CODE HERE
+        starttimer(); 
 }
 
 /* Preemptive MLFQ scheduling algorithm */
@@ -244,3 +249,25 @@ static tcb* dque(rpthread_q* q){
         free(front);
         return thread;
 }
+
+/* Start global timer */
+void starttimer(){
+        timer.it_interval.tv_usec = 1;
+        timer.it_interval.tv_sec = 0;
+        timer.it_value.tv_usec = 1;
+        timer.it_value.tv_usec = 0;
+        return;
+}
+
+/* Stop global timer */
+void starttimer(){
+        timer.it_interval.tv_usec = 0;
+        timer.it_interval.tv_sec = 0;
+        timer.it_value.tv_usec = 0;
+        timer.it_value.tv_usec = 0;
+        return;
+}
+
+
+
+

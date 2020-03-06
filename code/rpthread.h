@@ -101,14 +101,17 @@ int rpthread_mutex_unlock(rpthread_mutex_t *mutex);
 /* destroy the mutex */
 int rpthread_mutex_destroy(rpthread_mutex_t *mutex);
 
-/* queue APIs */
+/* set ID to rpthread_t*/
+int setid(rpthread_t* thread);
+
+/* queue functions */
 static void init_q(rpthread_q* q);
 static int add(tcb* thread, rpthread_q* q);
 static tcb* dque(rpthread_q* q);
 
-/* set ID to rpthread_t*/
-int setid(rpthread_t* thread);
-
+/* timer functions */
+void starttimer();
+void stoptimer();
 
 #ifdef USE_RTHREAD
 #define pthread_t rpthread_t
