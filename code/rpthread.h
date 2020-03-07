@@ -3,13 +3,13 @@
 // username of iLab:
 // iLab Server:
 
-#ifndef RTHREAD_T_H
-#define RTHREAD_T_H
+//#ifndef RTHREAD_T_H
+//#define RTHREAD_T_H
 
-#define _GNU_SOURCE
+//#define _GNU_SOURCE
 
 /* To use Linux pthread Library in Benchmark, you have to comment the USE_RTHREAD macro */
-#define USE_RTHREAD 1
+//#define USE_RTHREAD 1
 
 /* include lib header files that you need here: */
 #include <unistd.h>
@@ -101,8 +101,18 @@ int rpthread_mutex_unlock(rpthread_mutex_t *mutex);
 /* destroy the mutex */
 int rpthread_mutex_destroy(rpthread_mutex_t *mutex);
 
-/* make context for scheduler function */
-ucontext_t* make_schedctx();
+
+/* Scheduler functions */
+static void schedule();
+static void sched_stcf();
+static void sched_mlfq();
+
+
+/* initialize current tcb and ctx to main thread */
+void init_ctcb(tcb* ctcb);
+
+/* initialize make context for scheduler function */
+void init_schedctx(ucontext_t* cctx);
 
 /* set ID to rpthread_t*/
 int setid(rpthread_t* thread);
@@ -128,4 +138,4 @@ void stoptimer();
 #define pthread_mutex_destroy rpthread_mutex_destroy
 #endif
 
-#endif
+//#endif

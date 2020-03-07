@@ -21,7 +21,7 @@ int rpthread_create(rpthread_t * thread, pthread_attr_t * attr,
         stoptimer();
         // First, check if main thread has tcb initialized
         if (ctcb == NULL){
-                init(cctb);
+                init_ctcb(ctcb);
         }
         // Create Thread Control Block
         // Create and initalize the context of this thread
@@ -57,14 +57,16 @@ int rpthread_create(rpthread_t * thread, pthread_attr_t * attr,
         add(tcblock, queue);
         
         // swap to scheduler context 
-        schedctx = make_schedctx();
+        if (sched_ctx == NULL){
+                init_schedctx(sched_ctx);
+        }
         cctx = malloc(sizeof(ucontext_t));
-        memset(cctx, 0, sizeof(ucontext));
-        if (getcontext(cctx) == NULL){
+        memset(cctx, 0, sizeof(ucontext_t));
+        if (getcontext(cctx) < 0){
                 perror("Failed during getcontext");
                 exit(1); 
         }
-        swapcontext(cctx, schedctx);
+        swapcontext(cctx, sched_ctx);
         return 0;
 };
 
@@ -78,16 +80,18 @@ int rpthread_yield() {
 
         }
         // Change thread state from Running to Ready
-	tcb->state = READY;
+	ctcb->status = READY;
         // Save context of this thread to its thread control block        
         if (getcontext(cctx) < 0){
                 perror("Failed during getcontext");
                 exit(1);
         }
-        tcb->cctx;
+        ctcb->ucp = cctx;
         // Setup scheduler context
-        ucontext_t* schedctx = make_schedctx();
-        swapcontext(cctx, schedctx);
+        if (sched_ctx == NULL){
+                init_schedctx(sched_ctx);
+        }
+        swapcontext(cctx, sched_ctx);
         starttimer();
         return 0;
 };
@@ -153,7 +157,7 @@ int rpthread_mutex_destroy(rpthread_mutex_t *mutex) {
 static void schedule() {
         /* First update context of ctcb so that it contains context
            of thread just before swap was called.                   */
-        ctcb->state = READY;
+        ctcb->status = READY;
         ctcb->ucp = cctx;
         add(ctcb, queue);
 	// Every time when timer interrup happens, your thread library 
@@ -184,9 +188,10 @@ static void sched_stcf() {
         
 	// YOUR CODE HERE
         ctcb = dque(queue);
-        cctb->state = RUNNING;
-        cctx = cctb->ucp;
+        ctcb->status = RUNNING;
+        cctx = ctcb->ucp;
         starttimer();
+        setcontext(cctx);
 }
 
 /* Preemptive MLFQ scheduling algorithm */
@@ -201,11 +206,11 @@ static void sched_mlfq() {
 
 
 /* Initialize tcb and context for main thread */
-void init_ctcb(tcb ctcb){
+void init_ctcb(tcb* ctcb){
         ctcb = malloc(sizeof(tcb));
         cctx = malloc(sizeof(ucontext_t));
         void* cstack = malloc(sizeof(STACK_SIZE));
-        if (cctb == NULL || cctx == NULL || cstack == NULL){
+        if (ctcb == NULL || cctx == NULL || cstack == NULL){
                 perror("Failed allocation during pthread_create");
                 exit(1);
         }
@@ -217,43 +222,43 @@ void init_ctcb(tcb ctcb){
                 perror("Failed during getcontext");
                 exit(1);
         }
-        rphthread_t* cid;
+        rpthread_t* cid;
         setid(cid);
         ctcb->id = cid;
-        cctb->status = RUNNING;
-        cctb->ucp->cctx;
-        cctb->stack = cstack;
-        add(cctb->queue);
+        ctcb->status = RUNNING;
+        ctcb->ucp = cctx;
+        ctcb->stack = cstack;
+        add(ctcb, queue);
 }
 
 
 /* Initialize context for scheduler function */
-ucontext_t* init_schedctx(){
-        ucontext_t* schedctx = malloc(sizeof(ucontext_t));
+void init_schedctx(ucontext_t* sched_ctx){
+        sched_ctx = malloc(sizeof(ucontext_t));
         void* stack = malloc(sizeof(STACK_SIZE));
-        if (schedctx == NULL || stack == NULL ){
+        if (sched_ctx == NULL || stack == NULL ){
                 perror("Failed allocation during makeschedctx");
                 exit(1);
         }
-        memset(schedctx, 0, sizeof(ucontext_t));
+        memset(sched_ctx, 0, sizeof(ucontext_t));
         memset(stack, 0, sizeof(STACK_SIZE));
-        if (getcontext(schedctx) < 0){
+        if (getcontext(sched_ctx) < 0){
                 perror("Failed during getcontext(schedctx)");
                 exit(1);
         }
         // Setup scheduler context
-        schedctx->uc_link = NULL;
-        schedctx->uc_stack.ss_sp = stack;
-        schedctx->uc_stack.ss_size = STACK_SIZE;
-        schedctx->uc_stack.ss_flags = 0;
-        makecontext(schedctx, (void *)&schedule, 1, arg);
-        return schedctx;
+        sched_ctx->uc_link = NULL;
+        sched_ctx->uc_stack.ss_sp = stack;
+        sched_ctx->uc_stack.ss_size = STACK_SIZE;
+        sched_ctx->uc_stack.ss_flags = 0;
+        makecontext(sched_ctx, (void *)&schedule, 0, NULL);
+        return;
 }
 
 /* sets ID to rpthread_t type*/
 int setid(rpthread_t* thread){
         memset(thread, 0, sizeof(rpthread_t));
-        if (id_counter == NULL){
+        if (id_counter <= 0){
                 id_counter = 0;
         }
         id_counter++;
@@ -279,7 +284,7 @@ static void init_q(rpthread_q* q){
         return;
 }
 
-static int add(tcp* thread, rpthread_q* q){
+static int add(tcb* tcblock, rpthread_q* q){
         if (q == NULL){
                 init_q(q);
         }
@@ -290,7 +295,7 @@ static int add(tcp* thread, rpthread_q* q){
         }
         memset(newtail, 0, sizeof(rpthread_node));
         q->rear->next = newtail;
-        newtail->thread = thread;
+        newtail->thread = tcblock;
         q->rear = newtail;
         q->size++;
         return 1;
@@ -301,16 +306,15 @@ static int add(tcp* thread, rpthread_q* q){
 static tcb* dque(rpthread_q* q){
         
         if (q == NULL || q->size == 0){
-                int err = -1;
-                tcb* dque_err = &err;
-                return dque_err;
+                perror("Removing from empty queue");
+                exit(1);
         }
         rpthread_node* front = queue->front;
-        tcb* tcb = front->tcb;
+        tcb* tcblock = front->thread;
         
         queue->front = front->next;
         queue->size--;
-        return tcb;
+        return tcblock;
 }
 
 /* Start global timer */
