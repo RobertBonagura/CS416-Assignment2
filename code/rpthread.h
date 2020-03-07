@@ -12,15 +12,15 @@
 //#define USE_RTHREAD 1
 
 /* include lib header files that you need here: */
+#include <stdio.h>
 #include <unistd.h>
+#include <stdlib.h>
+#include <string.h>
 #include <sys/syscall.h>
 #include <sys/types.h>
 #include <sys/time.h>
-#include <stdio.h>
-#include <stdlib.h>
 #include <signal.h>
 #include <ucontext.h>
-#include <string.h>
 
 #define STACK_SIZE SIGSTKSZ
 
@@ -126,6 +126,7 @@ static tcb* dque(rpthread_q* q);
 void starttimer();
 void stoptimer();
 
+/**
 #ifdef USE_RTHREAD
 #define pthread_t rpthread_t
 #define pthread_mutex_t rpthread_mutex_t
@@ -137,5 +138,5 @@ void stoptimer();
 #define pthread_mutex_unlock rpthread_mutex_unlock
 #define pthread_mutex_destroy rpthread_mutex_destroy
 #endif
-
+*/
 //#endif

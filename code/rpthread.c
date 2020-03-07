@@ -13,12 +13,15 @@ tcb* ctcb;
 ucontext_t* cctx;
 ucontext_t* sched_ctx;
 int id_counter;
-struct itimerval timer;
+struct itimerval* timer;
+struct sigaction* sa;
 
 /* create a new thread */
 int rpthread_create(rpthread_t * thread, pthread_attr_t * attr, 
                       void *(*function)(void*), void * arg) {
-        stoptimer();
+        if (timer != NULL){
+                stoptimer();
+        }
         // First, check if main thread has tcb initialized
         if (ctcb == NULL){
                 init_ctcb(ctcb);
@@ -257,6 +260,11 @@ void init_schedctx(ucontext_t* sched_ctx){
 
 /* sets ID to rpthread_t type*/
 int setid(rpthread_t* thread){
+        thread = malloc(sizeof(rpthread_t));
+        if (thread == NULL){
+                perror("Failed allocation during setid");
+                exit(1);
+        }
         memset(thread, 0, sizeof(rpthread_t));
         if (id_counter <= 0){
                 id_counter = 0;
@@ -272,30 +280,40 @@ int setid(rpthread_t* thread){
 static void init_q(rpthread_q* q){
         q = malloc(sizeof(rpthread_q));
         rpthread_node* front = malloc(sizeof(rpthread_node));
+        rpthread_node* next = malloc(sizeof(rpthread_node));
         tcb* thread = malloc(sizeof(tcb));
-        if (q == NULL || front == NULL || thread == NULL){
+        if (q == NULL || front == NULL || next == NULL || thread == NULL){
                 perror("Could not allocate queue");
                 exit(1);
         }
         memset(q, 0, sizeof(rpthread_q));
         memset(front, 0, sizeof(rpthread_node));
+        memset(next, 0, sizeof(rpthread_node));
         memset(thread, 0, sizeof(tcb));
-        rpthread_node* back = front;
+        
+        front->thread = thread;
+        front->next = next;
+        q->front = front; 
+        q->rear = front;
         return;
 }
 
 static int add(tcb* tcblock, rpthread_q* q){
         if (q == NULL){
+                printf("q is NULL\n");
                 init_q(q);
         }
         rpthread_node* newtail = malloc(sizeof(rpthread_node));
-        if (newtail == NULL){
+        rpthread_node* newnext = malloc(sizeof(rpthread_node));
+        if (newtail == NULL || newnext == NULL){
                 perror("Could not allocate add API");
                 exit(1);
         }
         memset(newtail, 0, sizeof(rpthread_node));
-        q->rear->next = newtail;
+        memset(newnext, 0, sizeof(rpthread_node));
+        newtail->next = newnext;
         newtail->thread = tcblock;
+        q->rear->next = newtail;
         q->rear = newtail;
         q->size++;
         return 1;
@@ -304,14 +322,13 @@ static int add(tcb* tcblock, rpthread_q* q){
 
 /* Dequeue function for rpthread_queue */
 static tcb* dque(rpthread_q* q){
-        
         if (q == NULL || q->size == 0){
                 perror("Removing from empty queue");
                 exit(1);
         }
         rpthread_node* front = queue->front;
         tcb* tcblock = front->thread;
-        
+        free(front);
         queue->front = front->next;
         queue->size--;
         return tcblock;
@@ -319,31 +336,39 @@ static tcb* dque(rpthread_q* q){
 
 /* Start global timer */
 void starttimer(){
-        struct sigaction sa;
-        memset(&sa, 0, sizeof(sa));
-        sa.sa_handler = &schedule;
-        sigaction(SIGPROF, &sa, NULL);
-
-        timer.it_interval.tv_usec = 1;
-        timer.it_interval.tv_sec = 0;
-        timer.it_value.tv_usec = 1;
-        timer.it_value.tv_usec = 0;
-        setitimer(ITIMER_PROF, &timer, NULL);
+        if (sa == NULL){
+                sa = malloc(sizeof(struct sigaction));
+                if (sa == NULL){
+                        perror("Failed allocation in starttimer()");
+                        exit(1);
+                }
+                memset(sa, 0, sizeof(struct sigaction));
+                sa->sa_handler = &schedule;
+                sigaction(SIGPROF, sa, NULL);
+        }
+        if (timer == NULL){
+                timer = malloc(sizeof(struct itimerval));
+                if (timer == NULL){
+                        perror("Failed allocation in starttimer()");
+                        exit(1);
+                }
+                memset(timer, 0, sizeof(struct itimerval));
+        }
+        timer->it_interval.tv_usec = 0;
+        timer->it_interval.tv_sec = 1;
+        timer->it_value.tv_usec = 0;
+        timer->it_value.tv_usec = 1;
+        setitimer(ITIMER_PROF, timer, NULL);
         return;
 }
 
 /* Stop global timer */
 void stoptimer(){
-        struct sigaction sa;
-        memset(&sa, 0, sizeof(sa));
-        sa.sa_handler = &schedule;
-        sigaction(SIGPROF, &sa, NULL);
-        
-        timer.it_interval.tv_usec = 0;
-        timer.it_interval.tv_sec = 0;
-        timer.it_value.tv_usec = 0;
-        timer.it_value.tv_usec = 0;
-        setitimer(ITIMER_PROF, &timer, NULL);
+        timer->it_interval.tv_usec = 0;
+        timer->it_interval.tv_sec = 0;
+        timer->it_value.tv_usec = 0;
+        timer->it_value.tv_usec = 0;
+        setitimer(ITIMER_PROF, timer, NULL);
         return;
 }
 
