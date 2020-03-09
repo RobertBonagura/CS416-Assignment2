@@ -69,7 +69,6 @@ int rpthread_create(rpthread_t * thread, pthread_attr_t * attr,
                 perror("Failed during getcontext");
                 exit(1); 
         }
-        cctx
         swapcontext(cctx, sched_ctx);
         return 0;
 };
@@ -254,7 +253,7 @@ void init_schedctx(ucontext_t** sched_ctx){
                 exit(1);
         }
         // Setup scheduler context
-        ucontext_t context = malloc(sizeof(ucontext_t));
+        ucontext_t context;
         **sched_ctx = context;
         (*sched_ctx)->uc_link = NULL;
         (*sched_ctx)->uc_stack.ss_sp = stack;
@@ -297,7 +296,7 @@ static void init_q(rpthread_q** q){
         memset(next, 0, sizeof(rpthread_node));
         memset(thread, 0, sizeof(tcb));
        
-        rpthread_q queue = malloc(sizeof(rpthread_q));
+        rpthread_q queue;
         **q = queue; 
         front->thread = thread;
         front->next = next;
