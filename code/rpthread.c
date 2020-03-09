@@ -63,12 +63,6 @@ int rpthread_create(rpthread_t * thread, pthread_attr_t * attr,
         if (sched_ctx == NULL){
                 init_schedctx(&sched_ctx);
         }
-        cctx = malloc(sizeof(ucontext_t));
-        memset(cctx, 0, sizeof(ucontext_t));
-        if (getcontext(cctx) < 0){
-                perror("Failed during getcontext");
-                exit(1); 
-        }
         swapcontext(cctx, sched_ctx);
         return 0;
 };
@@ -211,7 +205,7 @@ static void sched_mlfq() {
 /* Initialize tcb and context for main thread */
 void init_ctcb(tcb** ctcb){
         *ctcb = malloc(sizeof(tcb));
-        cctx = malloc(sizeof(ucontext_t));
+        ucontext_t* cctx = malloc(sizeof(ucontext_t));
         void* cstack = malloc(sizeof(STACK_SIZE));
         if (*ctcb == NULL | cctx == NULL | cstack == NULL){
                 perror("Failed allocation during init_ctcb");
@@ -225,9 +219,6 @@ void init_ctcb(tcb** ctcb){
                 perror("Failed during getcontext");
                 exit(1);
         }
-        tcb block;
-        **ctcb = block;
-        
         rpthread_t* cid;
         setid(&cid);
         (*ctcb)->id = cid;
@@ -253,13 +244,11 @@ void init_schedctx(ucontext_t** sched_ctx){
                 exit(1);
         }
         // Setup scheduler context
-        ucontext_t context;
-        **sched_ctx = context;
         (*sched_ctx)->uc_link = NULL;
         (*sched_ctx)->uc_stack.ss_sp = stack;
         (*sched_ctx)->uc_stack.ss_size = STACK_SIZE;
         (*sched_ctx)->uc_stack.ss_flags = 0;
-        makecontext(*sched_ctx, (void *)&schedule, 0, NULL);
+        makecontext(*sched_ctx, (void *)&schedule, 0);
         return;
 }
 

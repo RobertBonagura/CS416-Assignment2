@@ -3,13 +3,13 @@
 // username of iLab:
 // iLab Server:
 
-//#ifndef RTHREAD_T_H
-//#define RTHREAD_T_H
+#ifndef RTHREAD_T_H
+#define RTHREAD_T_H
 
-//#define _GNU_SOURCE
+#define _GNU_SOURCE
 
 /* To use Linux pthread Library in Benchmark, you have to comment the USE_RTHREAD macro */
-//#define USE_RTHREAD 1
+#define USE_RTHREAD 1
 
 /* include lib header files that you need here: */
 #include <stdio.h>
@@ -126,7 +126,7 @@ static tcb* dque(rpthread_q** q);
 void starttimer();
 void stoptimer();
 
-/**
+
 #ifdef USE_RTHREAD
 #define pthread_t rpthread_t
 #define pthread_mutex_t rpthread_mutex_t
@@ -138,5 +138,5 @@ void stoptimer();
 #define pthread_mutex_unlock rpthread_mutex_unlock
 #define pthread_mutex_destroy rpthread_mutex_destroy
 #endif
-*/
-//#endif
+
+#endif
