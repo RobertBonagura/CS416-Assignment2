@@ -1,25 +1,9 @@
-CC = gcc
-CFLAGS = -g -c
-AR = ar -rc
-RANLIB = ranlib
+all: foobar
 
-SCHED = PSJF
-
-all: rpthread.a
-
-rpthread.a: rpthread.o
-	$(AR) librpthread.a rpthread.o
-	$(RANLIB) librpthread.a
+foobar: test.c rpthread.o
+	gcc -g -o foobar test.c rpthread.o
 
 rpthread.o: rpthread.h
-
-ifeq ($(SCHED), PSJF)
-	$(CC) -pthread $(CFLAGS) rpthread.c
-else ifeq ($(SCHED), MLFQ)
-	$(CC) -pthread $(CFLAGS) -DMLFQ rpthread.c
-else
-	echo "no such scheduling algorithm"
-endif
-
+	gcc -g -c rpthread.c
 clean:
-	rm -rf testfile *.o *.a
+	rm -rf foobar *.o
