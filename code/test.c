@@ -30,6 +30,7 @@ void bar(){
 int main(int argc, char **argv) {
 
 	/* Implement HERE */
+        printf("Hello!");
         rpthread_t* thread;
         rpthread_create(thread, NULL, (void *)&foo, 0);
         bar();        
