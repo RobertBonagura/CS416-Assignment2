@@ -52,7 +52,7 @@ int rpthread_create(rpthread_t * thread, pthread_attr_t * attr,
         makecontext(ucp, (void (*)(void)) function, 1, arg);
         
         // after everything is all set, push this thread into q
-        setid(thread);
+        setid(&thread);
         tcblock->id = thread;
         tcblock->status = READY;
         tcblock->ucp = ucp;
@@ -69,6 +69,7 @@ int rpthread_create(rpthread_t * thread, pthread_attr_t * attr,
                 perror("Failed during getcontext");
                 exit(1); 
         }
+        cctx
         swapcontext(cctx, sched_ctx);
         return 0;
 };
@@ -213,8 +214,8 @@ void init_ctcb(tcb** ctcb){
         *ctcb = malloc(sizeof(tcb));
         cctx = malloc(sizeof(ucontext_t));
         void* cstack = malloc(sizeof(STACK_SIZE));
-        if (&ctcb == NULL || cctx == NULL || cstack == NULL){
-                perror("Failed allocation during pthread_create");
+        if (*ctcb == NULL | cctx == NULL | cstack == NULL){
+                perror("Failed allocation during init_ctcb");
                 exit(1);
         }
         memset(*ctcb, 0, sizeof(tcb));
@@ -225,8 +226,11 @@ void init_ctcb(tcb** ctcb){
                 perror("Failed during getcontext");
                 exit(1);
         }
+        tcb block;
+        **ctcb = block;
+        
         rpthread_t* cid;
-        setid(cid);
+        setid(&cid);
         (*ctcb)->id = cid;
         (*ctcb)->status = RUNNING;
         (*ctcb)->ucp = cctx;
@@ -239,7 +243,7 @@ void init_ctcb(tcb** ctcb){
 void init_schedctx(ucontext_t** sched_ctx){
         *sched_ctx = malloc(sizeof(ucontext_t));
         void* stack = malloc(sizeof(STACK_SIZE));
-        if (*sched_ctx == NULL || stack == NULL ){
+        if (*sched_ctx == NULL | stack == NULL ){
                 perror("Failed allocation during makeschedctx");
                 exit(1);
         }
@@ -250,6 +254,8 @@ void init_schedctx(ucontext_t** sched_ctx){
                 exit(1);
         }
         // Setup scheduler context
+        ucontext_t context = malloc(sizeof(ucontext_t));
+        **sched_ctx = context;
         (*sched_ctx)->uc_link = NULL;
         (*sched_ctx)->uc_stack.ss_sp = stack;
         (*sched_ctx)->uc_stack.ss_size = STACK_SIZE;
@@ -259,19 +265,19 @@ void init_schedctx(ucontext_t** sched_ctx){
 }
 
 /* sets ID to rpthread_t type*/
-int setid(rpthread_t* thread){
-        thread = malloc(sizeof(rpthread_t));
-        if (thread == NULL){
+int setid(rpthread_t** thread){
+        *thread = malloc(sizeof(rpthread_t));
+        if (*thread == NULL){
                 perror("Failed allocation during setid");
                 exit(1);
         }
-        memset(thread, 0, sizeof(rpthread_t));
+        memset(*thread, 0, sizeof(rpthread_t));
         if (id_counter <= 0){
                 id_counter = 0;
         }
         id_counter++;
-        *thread = id_counter;
-        return *thread;
+        **thread = id_counter;
+        return **thread;
 }
 
 
@@ -282,7 +288,7 @@ static void init_q(rpthread_q** q){
         rpthread_node* front = malloc(sizeof(rpthread_node));
         rpthread_node* next = malloc(sizeof(rpthread_node));
         tcb* thread = malloc(sizeof(tcb));
-        if (*q == NULL || front == NULL || next == NULL || thread == NULL){
+        if (*q == NULL | front == NULL || next == NULL || thread == NULL){
                 perror("Could not allocate queue");
                 exit(1);
         }
@@ -290,7 +296,9 @@ static void init_q(rpthread_q** q){
         memset(front, 0, sizeof(rpthread_node));
         memset(next, 0, sizeof(rpthread_node));
         memset(thread, 0, sizeof(tcb));
-        
+       
+        rpthread_q queue = malloc(sizeof(rpthread_q));
+        **q = queue; 
         front->thread = thread;
         front->next = next;
         (*q)->front = front; 
@@ -300,7 +308,6 @@ static void init_q(rpthread_q** q){
 
 static int add(tcb** tcblock, rpthread_q** q){
         if (*q == NULL){
-                printf("q is NULL\n");
                 init_q(q);
         }
         rpthread_node* newtail = malloc(sizeof(rpthread_node));
@@ -337,21 +344,11 @@ static tcb* dque(rpthread_q** q){
 /* Start global timer */
 void starttimer(){
         if (sa == NULL){
-                sa = malloc(sizeof(struct sigaction));
-                if (sa == NULL){
-                        perror("Failed allocation in starttimer()");
-                        exit(1);
-                }
                 memset(sa, 0, sizeof(struct sigaction));
                 sa->sa_handler = &schedule;
                 sigaction(SIGPROF, sa, NULL);
         }
         if (timer == NULL){
-                timer = malloc(sizeof(struct itimerval));
-                if (timer == NULL){
-                        perror("Failed allocation in starttimer()");
-                        exit(1);
-                }
                 memset(timer, 0, sizeof(struct itimerval));
         }
         timer->it_interval.tv_usec = 0;

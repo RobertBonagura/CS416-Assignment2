@@ -115,7 +115,7 @@ void init_ctcb(tcb** ctcb);
 void init_schedctx(ucontext_t** cctx);
 
 /* set ID to rpthread_t*/
-int setid(rpthread_t* thread);
+int setid(rpthread_t** thread);
 
 /* queue functions */
 static void init_q(rpthread_q** q);
