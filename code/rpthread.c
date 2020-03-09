@@ -24,7 +24,7 @@ int rpthread_create(rpthread_t * thread, pthread_attr_t * attr,
         }
         // First, check if main thread has tcb initialized
         if (ctcb == NULL){
-                init_ctcb(ctcb);
+                init_ctcb(&ctcb);
         }
         // Create Thread Control Block
         // Create and initalize the context of this thread
@@ -57,11 +57,11 @@ int rpthread_create(rpthread_t * thread, pthread_attr_t * attr,
         tcblock->status = READY;
         tcblock->ucp = ucp;
         tcblock->stack = stack;
-        add(tcblock, queue);
+        add(&tcblock, &queue);
         
         // swap to scheduler context 
         if (sched_ctx == NULL){
-                init_schedctx(sched_ctx);
+                init_schedctx(&sched_ctx);
         }
         cctx = malloc(sizeof(ucontext_t));
         memset(cctx, 0, sizeof(ucontext_t));
@@ -92,7 +92,7 @@ int rpthread_yield() {
         ctcb->ucp = cctx;
         // Setup scheduler context
         if (sched_ctx == NULL){
-                init_schedctx(sched_ctx);
+                init_schedctx(&sched_ctx);
         }
         swapcontext(cctx, sched_ctx);
         starttimer();
@@ -162,7 +162,7 @@ static void schedule() {
            of thread just before swap was called.                   */
         ctcb->status = READY;
         ctcb->ucp = cctx;
-        add(ctcb, queue);
+        add(&ctcb, &queue);
 	// Every time when timer interrup happens, your thread library 
 	// should be contexted switched from thread context to this 
 	// schedule function
@@ -190,7 +190,7 @@ static void sched_stcf() {
 	// (feel free to modify arguments and return types)
         
 	// YOUR CODE HERE
-        ctcb = dque(queue);
+        ctcb = dque(&queue);
         ctcb->status = RUNNING;
         cctx = ctcb->ucp;
         starttimer();
@@ -209,15 +209,15 @@ static void sched_mlfq() {
 
 
 /* Initialize tcb and context for main thread */
-void init_ctcb(tcb* ctcb){
-        ctcb = malloc(sizeof(tcb));
+void init_ctcb(tcb** ctcb){
+        *ctcb = malloc(sizeof(tcb));
         cctx = malloc(sizeof(ucontext_t));
         void* cstack = malloc(sizeof(STACK_SIZE));
-        if (ctcb == NULL || cctx == NULL || cstack == NULL){
+        if (&ctcb == NULL || cctx == NULL || cstack == NULL){
                 perror("Failed allocation during pthread_create");
                 exit(1);
         }
-        memset(ctcb, 0, sizeof(tcb));
+        memset(*ctcb, 0, sizeof(tcb));
         memset(cctx, 0, sizeof(ucontext_t));
         memset(cstack, 0, sizeof(STACK_SIZE));
 
@@ -227,34 +227,34 @@ void init_ctcb(tcb* ctcb){
         }
         rpthread_t* cid;
         setid(cid);
-        ctcb->id = cid;
-        ctcb->status = RUNNING;
-        ctcb->ucp = cctx;
-        ctcb->stack = cstack;
-        add(ctcb, queue);
+        (*ctcb)->id = cid;
+        (*ctcb)->status = RUNNING;
+        (*ctcb)->ucp = cctx;
+        (*ctcb)->stack = cstack;
+        add(ctcb, &queue);
 }
 
 
 /* Initialize context for scheduler function */
-void init_schedctx(ucontext_t* sched_ctx){
-        sched_ctx = malloc(sizeof(ucontext_t));
+void init_schedctx(ucontext_t** sched_ctx){
+        *sched_ctx = malloc(sizeof(ucontext_t));
         void* stack = malloc(sizeof(STACK_SIZE));
-        if (sched_ctx == NULL || stack == NULL ){
+        if (*sched_ctx == NULL || stack == NULL ){
                 perror("Failed allocation during makeschedctx");
                 exit(1);
         }
-        memset(sched_ctx, 0, sizeof(ucontext_t));
+        memset(*sched_ctx, 0, sizeof(ucontext_t));
         memset(stack, 0, sizeof(STACK_SIZE));
-        if (getcontext(sched_ctx) < 0){
+        if (getcontext(*sched_ctx) < 0){
                 perror("Failed during getcontext(schedctx)");
                 exit(1);
         }
         // Setup scheduler context
-        sched_ctx->uc_link = NULL;
-        sched_ctx->uc_stack.ss_sp = stack;
-        sched_ctx->uc_stack.ss_size = STACK_SIZE;
-        sched_ctx->uc_stack.ss_flags = 0;
-        makecontext(sched_ctx, (void *)&schedule, 0, NULL);
+        (*sched_ctx)->uc_link = NULL;
+        (*sched_ctx)->uc_stack.ss_sp = stack;
+        (*sched_ctx)->uc_stack.ss_size = STACK_SIZE;
+        (*sched_ctx)->uc_stack.ss_flags = 0;
+        makecontext(*sched_ctx, (void *)&schedule, 0, NULL);
         return;
 }
 
@@ -277,29 +277,29 @@ int setid(rpthread_t* thread){
 
 
 /* queue APIs*/
-static void init_q(rpthread_q* q){
-        q = malloc(sizeof(rpthread_q));
+static void init_q(rpthread_q** q){
+        *q = malloc(sizeof(rpthread_q));
         rpthread_node* front = malloc(sizeof(rpthread_node));
         rpthread_node* next = malloc(sizeof(rpthread_node));
         tcb* thread = malloc(sizeof(tcb));
-        if (q == NULL || front == NULL || next == NULL || thread == NULL){
+        if (*q == NULL || front == NULL || next == NULL || thread == NULL){
                 perror("Could not allocate queue");
                 exit(1);
         }
-        memset(q, 0, sizeof(rpthread_q));
+        memset(*q, 0, sizeof(rpthread_q));
         memset(front, 0, sizeof(rpthread_node));
         memset(next, 0, sizeof(rpthread_node));
         memset(thread, 0, sizeof(tcb));
         
         front->thread = thread;
         front->next = next;
-        q->front = front; 
-        q->rear = front;
+        (*q)->front = front; 
+        (*q)->rear = front;
         return;
 }
 
-static int add(tcb* tcblock, rpthread_q* q){
-        if (q == NULL){
+static int add(tcb** tcblock, rpthread_q** q){
+        if (*q == NULL){
                 printf("q is NULL\n");
                 init_q(q);
         }
@@ -312,25 +312,25 @@ static int add(tcb* tcblock, rpthread_q* q){
         memset(newtail, 0, sizeof(rpthread_node));
         memset(newnext, 0, sizeof(rpthread_node));
         newtail->next = newnext;
-        newtail->thread = tcblock;
-        q->rear->next = newtail;
-        q->rear = newtail;
-        q->size++;
+        newtail->thread = *tcblock;
+        (*q)->rear->next = newtail;
+        (*q)->rear = newtail;
+        (*q)->size++;
         return 1;
         
 }
 
 /* Dequeue function for rpthread_queue */
-static tcb* dque(rpthread_q* q){
-        if (q == NULL || q->size == 0){
+static tcb* dque(rpthread_q** q){
+        if (*q == NULL || (*q)->size == 0){
                 perror("Removing from empty queue");
                 exit(1);
         }
-        rpthread_node* front = queue->front;
+        rpthread_node* front = (*q)->front;
         tcb* tcblock = front->thread;
         free(front);
-        queue->front = front->next;
-        queue->size--;
+        (*q)->front = front->next;
+        (*q)->size--;
         return tcblock;
 }
 

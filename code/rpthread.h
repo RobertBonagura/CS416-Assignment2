@@ -109,18 +109,18 @@ static void sched_mlfq();
 
 
 /* initialize current tcb and ctx to main thread */
-void init_ctcb(tcb* ctcb);
+void init_ctcb(tcb** ctcb);
 
 /* initialize make context for scheduler function */
-void init_schedctx(ucontext_t* cctx);
+void init_schedctx(ucontext_t** cctx);
 
 /* set ID to rpthread_t*/
 int setid(rpthread_t* thread);
 
 /* queue functions */
-static void init_q(rpthread_q* q);
-static int add(tcb* thread, rpthread_q* q);
-static tcb* dque(rpthread_q* q);
+static void init_q(rpthread_q** q);
+static int add(tcb** thread, rpthread_q** q);
+static tcb* dque(rpthread_q** q);
 
 /* timer functions */
 void starttimer();
