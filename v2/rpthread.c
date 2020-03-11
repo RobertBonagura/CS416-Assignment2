@@ -19,10 +19,10 @@ struct itimerval timer;
 int rpthread_create(rpthread_t * thread, pthread_attr_t * attr, 
                       void *(*function)(void*), void * arg) {
         if (timer.it_interval.tv_sec != 0 || timer.it_value.tv_usec != 0){
-			stopTimer();
+			stoptimer();
 		}
 
-		if (ctcb.id == 0 || ctcb.id == NULL){
+		if (ctcb.id == 0 ){
 			init_ctcb(&ctcb);
 		}
 
@@ -200,4 +200,4 @@ void stoptimer(){
         timer.it_value.tv_usec = 0;
         setitimer(ITIMER_PROF, &timer, NULL);
         return;
-
+}
