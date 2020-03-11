@@ -96,16 +96,26 @@ int rpthread_mutex_unlock(rpthread_mutex_t *mutex);
 /* destroy the mutex */
 int rpthread_mutex_destroy(rpthread_mutex_t *mutex);
 
+/* Scheduler functions */
+static void scheduler();
+static void sched_stcf();
+static void sched_mlfq();
+
 /* Initialize tcb and context for main thread. */
 void init_ctcb(tcb* ctcb);
+
+/* Initialize context for schedule function. */
+void init_schedctx(ucontext_t* schedctx);
 
 /* sets ID to rpthread_t type*/
 void setid(rpthread_t* thread);
 
-/* Add tcb into the queue*/
+/* Queue functions. */
 static int add(tcb* tcblock, rpthread_q* q);
+static tcb dque(rpthread_q* q);
 
-/* Stop global timer */
+/* Timer functions. Start timer creates sighandler. */
+void starttimer();
 void stoptimer();
 
 #ifdef USE_RTHREAD
