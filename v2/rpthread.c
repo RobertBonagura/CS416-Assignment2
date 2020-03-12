@@ -23,54 +23,54 @@ int rpthread_create(rpthread_t * thread, pthread_attr_t * attr,
 			stoptimer();
 		}
        
-	// Create Thread Control Block for the thread that calls pthread_create
-	if (ctcb.id == 0 ){
-		init_ctcb(&ctcb);
-	}
+		// Create Thread Control Block for the thread that calls pthread_create
+		if (ctcb.id == 0 ){
+			init_ctcb(&ctcb);
+		}
 
-	// Allocate space for stack for this tcb
-	void* stack = malloc(sizeof(STACK_SIZE));
-	if (stack == NULL) {
+		// Allocate space for stack for this tcb
+		void* stack = malloc(sizeof(STACK_SIZE));
+		if (stack == NULL) {
                 perror("Failed stack allocation in rpthread_create");
-	        exit(1);
-	}
-	memset(stack, 0, sizeof(STACK_SIZE));
+		        exit(1);
+		}
+		memset(stack, 0, sizeof(STACK_SIZE));
         
-	// Create and initialize the context of this new thread
-	ucontext_t ctx; 
-	if (getcontext(&ctx) < 0){
-        	perror("Failed during getcontext in rpthread_create");
-	        exit(1);
+		// Create and initialize the context of this new thread
+		ucontext_t ctx; 
+		if (getcontext(&ctx) < 0){
+        		perror("Failed during getcontext in rpthread_create");
+	       	    exit(1);
         }
-        ctx.uc_link = NULL;
-	ctx.uc_stack.ss_sp = stack;
-        ctx.uc_stack.ss_size = STACK_SIZE;
-        ctx.uc_stack.ss_flags = 0;
-        makecontext(&ctx, (void (*)(void)) function, 1, arg);
+    	ctx.uc_link = NULL;
+		ctx.uc_stack.ss_sp = stack;
+    	ctx.uc_stack.ss_size = STACK_SIZE;
+    	ctx.uc_stack.ss_flags = 0;
+    	makecontext(&ctx, (void (*)(void)) function, 1, arg);
        
         // after everything is all set, push this thread into q
         tcb tcblock;
-	if (thread == NULL){
-		thread = malloc(sizeof(rpthread_t));
 		if (thread == NULL){
-			perror("Failed allocation for thread_t in setid");
-			exit(1);
+			thread = malloc(sizeof(rpthread_t));
+				if (thread == NULL){
+					perror("Failed allocation for thread_t in setid");
+					exit(1);
+				}
 		}
-	}
-	memset(thread, 0, sizeof(rpthread_t));
-	setid(thread);
-	tcblock.id = *thread;
-	tcblock.status = READY;
-	tcblock.ctx = ctx;
-	tcblock.stack = stack;
-	add(&tcblock, &queue);
+		memset(thread, 0, sizeof(rpthread_t));
+		setid(thread);
+		tcblock.id = *thread;
+		tcblock.status = READY;
+		tcblock.ctx = ctx;
+		tcblock.stack = stack;
+		add(&tcblock, &queue);
 
-	// swap to scheduler context
+		// swap to scheduler context
         if (schedctx.uc_stack.ss_sp == NULL){
                 init_schedctx(&schedctx);
         }
 	
-	swapcontext(&cctx, &schedctx);
+		swapcontext(&cctx, &schedctx);
         return 1;
 }
 
@@ -212,6 +212,12 @@ void init_ctcb(tcb* ctcb){
                 perror("Failed getcontext during init_ctcb");
                 exit(1);
         }
+
+		cctx.uc_link = NULL;
+		cctx.uc_stack.ss_sp = cstack;
+    	cctx.uc_stack.ss_size = STACK_SIZE;
+    	cctx.uc_stack.ss_flags = 0;
+  
         rpthread_t cid;
         setid(&cid);
         ctcb->id = cid;
