@@ -23,72 +23,54 @@ int rpthread_create(rpthread_t * thread, pthread_attr_t * attr,
 			stoptimer();
 		}
        
-	    // Create Thread Control Block for calling thread
-		if (ctcb.id == 0 ){
-			init_ctcb(&ctcb);
-		}
+	// Create Thread Control Block for the thread that calls pthread_create
+	if (ctcb.id == 0 ){
+		init_ctcb(&ctcb);
+	}
 
-		// Allocate space for stack for this tcb
-	    void* stack = malloc(sizeof(STACK_SIZE));
-	    if (stack == NULL){
-		    perror("Failed stack allocation in rpthread_create");
-		    exit(1);
-	    }
-	    memset(stack, 0, sizeof(STACK_SIZE));
+	// Allocate space for stack for this tcb
+	void* stack = malloc(sizeof(STACK_SIZE));
+	if (stack == NULL) {
+                perror("Failed stack allocation in rpthread_create");
+	        exit(1);
+	}
+	memset(stack, 0, sizeof(STACK_SIZE));
         
-		// Create and initialize the context of this new thread
-	    ucontext_t ctx; 
-	    if (getcontext(&ctx) < 0){
-		    perror("Failed during getcontext in rpthread_create");
-		    exit(1);
-	    }
-	    ctx.uc_link = NULL;
-	    ctx.uc_stack.ss_sp = stack;
-	    ctx.uc_stack.ss_size = STACK_SIZE;
-	    ctx.uc_stack.ss_flags = 0;
-	    makecontext(&ctx, (void (*)(void)) function, 1, arg);
+	// Create and initialize the context of this new thread
+	ucontext_t ctx; 
+	if (getcontext(&ctx) < 0){
+        	perror("Failed during getcontext in rpthread_create");
+	        exit(1);
+        }
+        ctx.uc_link = NULL;
+	ctx.uc_stack.ss_sp = stack;
+        ctx.uc_stack.ss_size = STACK_SIZE;
+        ctx.uc_stack.ss_flags = 0;
+        makecontext(&ctx, (void (*)(void)) function, 1, arg);
        
         // after everything is all set, push this thread into q
-		tcb tcblock;
+        tcb tcblock;
+	if (thread == NULL){
+		thread = malloc(sizeof(rpthread_t));
 		if (thread == NULL){
-			thread = malloc(sizeof(rpthread_t));
-			if (thread == NULL){
-				perror("Failed allocation for thread_t in setid");
-				exit(1);
-			}
+			perror("Failed allocation for thread_t in setid");
+			exit(1);
 		}
-		memset(thread, 0, sizeof(rpthread_t));
-		setid(thread);
-		tcblock.id = *thread;
-		tcblock.status = READY;
-		tcblock.ctx = ctx;
-		tcblock.stack = stack;
-		add(&tcblock, &queue);
+	}
+	memset(thread, 0, sizeof(rpthread_t));
+	setid(thread);
+	tcblock.id = *thread;
+	tcblock.status = READY;
+	tcblock.ctx = ctx;
+	tcblock.stack = stack;
+	add(&tcblock, &queue);
 
-		// swap to scheduler context
+	// swap to scheduler context
         if (schedctx.uc_stack.ss_sp == NULL){
                 init_schedctx(&schedctx);
         }
-		/**
-		// Allocate space for stack for this tcb
-	    void* cstack = malloc(sizeof(STACK_SIZE));
-	    if (cstack == NULL){
-		    perror("Failed stack allocation in rpthread_create");
-		    exit(1);
-	    }
-	    memset(cstack, 0, sizeof(STACK_SIZE));
-        
-		// Create and initialize the context of this new thread
-	    if (getcontext(&cctx) < 0){
-		    perror("Failed during getcontext in rpthread_create");
-		    exit(1);
-	    }
-	    cctx.uc_link = NULL;
-	    cctx.uc_stack.ss_sp = cstack;
-	    cctx.uc_stack.ss_size = STACK_SIZE;
-	    cctx.uc_stack.ss_flags = 0;
-	*/
-	    swapcontext(&cctx, &schedctx);
+	
+	swapcontext(&cctx, &schedctx);
         return 1;
 }
 
@@ -161,14 +143,11 @@ int rpthread_mutex_destroy(rpthread_mutex_t *mutex) {
 
 /* scheduler */
 static void schedule() {
-	// Every time when timer interrup happens, your thread library 
+	while (1) {
+        // Every time when timer interrup happens, your thread library 
 	// should be contexted switched from thread context to this 
 	// schedule function
-	stoptimer();
-	ctcb.status = READY;
-	ctcb.ctx = cctx;
-	add(&ctcb, &queue);
-	// Invoke different actual scheduling algorithms
+        // Invoke different actual scheduling algorithms
 	// according to policy (STCF or MLFQ)
 
 	// if (sched == STCF)
@@ -178,7 +157,7 @@ static void schedule() {
 
 	// YOUR CODE HERE
 	sched_stcf();
-
+        }
 // schedule policy
 #ifndef MLFQ
 	// Choose STCF
@@ -194,11 +173,18 @@ static void sched_stcf() {
 	// (feel free to modify arguments and return types)
 
 	// YOUR CODE HERE
+	stoptimer();
+	ctcb.status = READY;
+	ctcb.ctx = cctx;
+	add(&ctcb, &queue);
+	printf("Within sched added ctx:  %d\n", ctcb.id);
 	ctcb = dque(&queue);
 	ctcb.status = RUNNING;
 	cctx = ctcb.ctx;
+        printf("about to run ctx: %d\n", ctcb.id);
 	starttimer();
 	setcontext(&cctx);
+        return;
 }
 
 /* Preemptive MLFQ scheduling algorithm */
@@ -257,14 +243,14 @@ void init_schedctx(ucontext_t* schedctx){
 
 /* sets ID to rpthread_t type*/
 void setid(rpthread_t* thread){
+	if (thread == NULL){
+		thread = malloc(sizeof(rpthread_t));
 		if (thread == NULL){
-			thread = malloc(sizeof(rpthread_t));
-			if (thread == NULL){
-				perror("Failed allocation for thread_t in setid");
-				exit(1);
-			}
+			perror("Failed allocation for thread_t in setid");
+			exit(1);
 		}
-		id_counter++;
+	}
+	id_counter++;
         *thread = (rpthread_t)id_counter;
         return;
 }
@@ -274,26 +260,26 @@ void setid(rpthread_t* thread){
 /* Add tcb into the queue*/
 static int add(tcb* tcblock, rpthread_q* q){
         
-		rpthread_node* newtail = malloc(sizeof(rpthread_node));
-		if (newtail == NULL) {
-			perror("Failed allocation of new node in add()");
-			exit(1);
-		}
-		memset(newtail, 0, sizeof(rpthread_node));
+	rpthread_node* newtail = malloc(sizeof(rpthread_node));
+	if (newtail == NULL) {
+		perror("Failed allocation of new node in add()");
+		exit(1);
+	}
+	memset(newtail, 0, sizeof(rpthread_node));
 
-		newtail->next = NULL;
-		newtail->block = *tcblock;
+	newtail->next = NULL;
+	newtail->block = *tcblock;
 
-		q->rear.next = newtail;
-		q->rear = *newtail;
-		if (q->size == 0){
-			q->front = q->rear;
-		}
-		else if (q->size == 1){
-			q->front.next = &(q->rear);
-		}
-		q->size++;
-		//free(newtail);
+	q->rear.next = newtail;
+	q->rear = *newtail;
+	if (q->size == 0){
+		q->front = q->rear;
+	}
+	else if (q->size == 1){
+		q->front.next = &(q->rear);
+	}
+	q->size++;
+	free(newtail);
         return 1;
         
 }
@@ -311,12 +297,21 @@ static tcb dque(rpthread_q* q){
         return tcblock;
 }
 
+/* Signal action handler. */
+void handler(){
+        printf("Timer!!\n");
+        if (schedctx.uc_stack.ss_sp == NULL){
+                init_schedctx(&schedctx);
+        }
+        swapcontext(&cctx, &schedctx);
+}
+
 /* Start global timer */
 void starttimer(){
-		if (sa.sa_handler == NULL){
-			sa.sa_handler = &schedule;
-			sigaction(SIGPROF, &sa, NULL);
-		}
+	if (sa.sa_handler == NULL){
+                sa.sa_handler = &handler;
+		sigaction(SIGPROF, &sa, NULL);
+	}
         timer.it_interval.tv_usec = 0;
         timer.it_interval.tv_sec = 1;
         timer.it_value.tv_usec = 0;

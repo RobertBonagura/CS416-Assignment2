@@ -114,7 +114,8 @@ void setid(rpthread_t* thread);
 static int add(tcb* tcblock, rpthread_q* q);
 static tcb dque(rpthread_q* q);
 
-/* Timer functions. Start timer creates sighandler. */
+/* Timer and sigaction functions. */
+void handler();
 void starttimer();
 void stoptimer();
 
