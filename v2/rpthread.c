@@ -267,25 +267,31 @@ void setid(rpthread_t* thread){
 static int add(tcb* tcblock, rpthread_q* q){
         
 	rpthread_node* newtail = malloc(sizeof(rpthread_node));
-	if (newtail == NULL) {
+	rpthread_node* newnext = malloc(sizeof(rpthread_node));
+	if (newtail == NULL || newnext == NULL) {
 		perror("Failed allocation of new node in add()");
 		exit(1);
 	}
 	memset(newtail, 0, sizeof(rpthread_node));
+	memset(newnext, 0, sizeof(rpthread_node));
 
-	newtail->next = NULL;
+	newtail->next = newnext;
 	newtail->block = *tcblock;
 
-	q->rear.next = newtail;
-	q->rear = *newtail;
 	if (q->size == 0){
+	        q->rear = *newtail;
 		q->front = q->rear;
 	}
 	else if (q->size == 1){
-		q->front.next = &(q->rear);
+	        q->rear = *newtail;
+		*(q->front.next) = q->rear;
 	}
+        else if (q->size > 1){
+                q->rear.next = newtail;
+                q->rear = *newtail;
+        }
 	q->size++;
-	free(newtail);
+	//free(newtail);
         return 1;
         
 }
@@ -319,7 +325,7 @@ void starttimer(){
 		sigaction(SIGPROF, &sa, NULL);
 	}
         timer.it_interval.tv_usec = 0;
-        timer.it_interval.tv_sec = 1;
+        timer.it_interval.tv_sec = 0;
         timer.it_value.tv_usec = 0;
         timer.it_value.tv_usec = 1;
         setitimer(ITIMER_PROF, &timer, NULL);

@@ -13,17 +13,35 @@
 
 void foo();
 void bar();
+void foo1();
+void bar1();
 
 
 void foo(){
         while (1){
                 puts("Foo");
-        }
+                rpthread_t thread;
+                rpthread_create(&thread, NULL, (void *)&foo1, 0);
+       } 
 }
 
 void bar(){
         while (1){
                 puts("Bar");
+                rpthread_t thread;
+                rpthread_create(&thread, NULL, (void *)&bar1, 0);
+        }
+}
+
+void foo1(){
+        while (1){
+                puts("Foo1111111111");
+        }
+}
+
+void bar1(){
+        while (1){
+                puts("Bar11111111111");
         }
 }
 
@@ -31,8 +49,8 @@ int main(int argc, char **argv) {
 
 	/* Implement HERE */
         printf("Hello!\n");
-        rpthread_t* thread;
-        rpthread_create(thread, NULL, (void *)&foo, 0);
+        rpthread_t thread;
+        rpthread_create(&thread, NULL, (void *)&foo, 0);
         bar();        
 	return 0;
 }
